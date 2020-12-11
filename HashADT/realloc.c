@@ -2,9 +2,10 @@
 #include "specific.h"
 #include "../assoc.h"
 
-int _hashstr(assoc* a,  void* key);
-int _hashstr_probe(assoc* a, void* key);
-void _hashstrprint(assoc* a);
+int _hashnumstr(assoc* a,  void* key);
+int _probenumstr(assoc* a, void* key);
+int _hashstr(assoc* a, void* key, void* data);
+void _hashprint(assoc* a, bool string);
 bool _isprime(unsigned int n);
 unsigned int _nrstlowprime(unsigned int n);
 void _test();
@@ -17,27 +18,12 @@ void _test();
 */
 assoc* assoc_init(int keysize){
   assoc* a;
+
   a = ncalloc(1, sizeof(assoc));
-
-  if(keysize >= 0){
-    a -> keysize = keysize;
-
-    if(keysize == 0){
-      a -> dataptr = ncalloc(INITSIZE, sizeof(char)*MAXSTR);
-      a -> keyptr = ncalloc(1, sizeof(char)*MAXSTR);
-    }
-    else{
-      a -> dataptr = ncalloc(INITSIZE, sizeof(int));
-      a -> keyptr = ncalloc(1, sizeof(int));
-    }
-  }
-  else{
-    printf("Keysize must be positive!\n");
-    exit(EXIT_FAILURE);
-  }
-
+  a -> keysize = keysize;
   a -> nfilled = 0;
   a -> capacity = INITSIZE;
+  a -> lookup = ncalloc(a -> capacity, sizeof(store));
 
   return a;
 }
@@ -47,16 +33,21 @@ assoc* assoc_init(int keysize){
    - may cause resize, therefore 'a' might
    be changed due to a realloc() etc.*/
 
-/*void assoc_insert(assoc** a, void* key, void* data){
+void assoc_insert(assoc** a, void* key, void* data){
+  /*Struct De-reference variable*/
+  assoc* b = (*a);
 
-}*/
+  if(b -> keysize == 0){
+    _hashstr(b, key, data);
+  }
+}
 
 /*
    Returns the number of key/data pairs
    currently stored in the table
-
+*/
 unsigned int assoc_count(assoc* a){
-
+  return a -> nfilled;
 }
 
 /*
@@ -70,42 +61,94 @@ void* assoc_lookup(assoc* a, void* key){
 
 /* Free up all allocated space from 'a' */
 void assoc_free(assoc* a){
-  if(a -> dataptr != NULL){
-    free(a -> dataptr);
-  }
-  if(a -> keyptr != NULL){
-    free(a -> keyptr);
+  if(a -> lookup != NULL){
+    free(a-> lookup);
   }
   if(a != NULL){
     free(a);
   }
 }
 
+/******************************************************************/
 /******************** Unofficial Functions ************************/
-int _hashstr(assoc* a, void* key){
+/******************************************************************/
+
+/*Function to return numeric hash value*/
+int _hashnumstr(assoc* a, void* key){
   char str[MAXSTR];
   int c, i=0;
   unsigned long hash=5381;
 
   /* Create copy of void pointer into a char pointer*/
   strcpy(str, (char*)key);
-  printf("%s\n", str);
 
-  /********** Hash function used from lecture notes *****************/
+  /*Hash function used from lecture notes */
   while((c = (str[i++]))){
     hash= 33 * hash ^ c;
   }
-  return (int)(hash%a->capacity);
+  hash=hash%a->capacity;
+  return (int)(hash);
 }
 
-int _hashstr_probe(assoc* a, void* key){
+/*Function to create the probe hash number*/
+int _probenumstr(assoc* a, void* key){
+  char str[MAXSTR];
+  int c, i=0;
+  unsigned long hash=5381;
 
+  /* Create copy of void pointer into a char pointer*/
+  strcpy(str, (char*)key);
+
+  /*Hash function used from lecture notes */
+  while((c = (str[i++]))){
+    hash= 33 * hash ^ c;
+  }
+  hash=(hash/ a-> capacity)%a->capacity;
+  /*Precaution if probe is ever 0*/
+  if(hash==0){
+    hash++;
+  }
+  return (int)(hash);
+}
+
+/*Function perform hashing*/
+int _hashstr(assoc* a, void* key, void* data){
+  int n, p, filled;
+  filled=a->nfilled;
+  /* Get hashed key integer */
+  n=_hashnumstr(a, key);
+  printf("hash: %d ", n);
+
+  /*Store key pointer and index pointer in structure if empty*/
+  if(a -> lookup[n].keyptr == NULL){
+    a -> lookup[n].keyptr = key;
+    a -> lookup[n].dataptr = data;
+    a -> nfilled++;
+  }
+  else{
+    /* Create probe */
+    p=_probenumstr(a, key);
+    printf("probe: %d ", p);
+
+    /*Add probe to hash number and get remainder*/
+    while(filled == a -> nfilled){
+      n=(n+p)%a -> capacity;
+      printf("nexthash: %d ", n);
+      if(a -> lookup[n].keyptr == NULL){
+        a -> lookup[n].keyptr = key;
+        a -> lookup[n].dataptr = data;
+        a -> nfilled++;
+      }
+    }
+  }
 }
 
 /*void _hashint(void* key){
 
 }*/
 
+/* Function to find the nearest prime lower than the number you send
+ to the function*/
 unsigned int _nrstlowprime(unsigned int n){
   while(_isprime(n) == false){
     n--;
@@ -113,6 +156,7 @@ unsigned int _nrstlowprime(unsigned int n){
   return n;
 }
 
+/*Function to tell if the number you send to the function is prime*/
 bool _isprime(unsigned int n){
   int i;
 
@@ -132,15 +176,20 @@ bool _isprime(unsigned int n){
   return true;
 }
 
-/*void _hashstrprint(assoc* a){
+void _hashprint(assoc* a, bool string){
   int i;
-  char* str = ncalloc(a -> capacity, sizeof(char)*MAXSTR);
-  strcpy(str, (char*)a -> dataptr);
 
-  while((*str[i++]))
-    printf("%s\n", str);
+  if(string==true){
+    for(i=0; i< a->capacity; i++){
+      printf("%s ", (char*)a -> lookup[i].keyptr);
+    }
   }
-}*/
+  else{
+    for(i=0; i< a->capacity; i++){
+      printf("%d ", *((int*)a -> lookup[i].keyptr));
+    }
+  }
+}
 
 void _test(){
   assert(_isprime(2));

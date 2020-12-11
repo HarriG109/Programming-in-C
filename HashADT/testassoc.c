@@ -2,61 +2,26 @@
 #include "assoc.h"
 
 #define ARRSIZE 15
-#define WORDS 370119
+#define WORDS /*370119*/12
 #define NUMRANGE 100000
 
 char* strduprev(char* str);
 
 int main(void)
 {
-  static char strs[10][50];
-  static char list[10][50];
-  assoc* a;
-  int num, i;
-  a = assoc_init(0);
-  _test();
 
-  strcpy(strs[0],"Test");
-  strcpy(strs[1],"Testing");
-  strcpy(strs[2],"Why");
-  strcpy(strs[3],"Hi");
-  strcpy(strs[4],"Trap");
-  strcpy(strs[5],"Give");
-  strcpy(strs[6],"Lunch");
-  strcpy(strs[7],"Hunger");
-  strcpy(strs[8],"Poop");
-  strcpy(strs[9],"Yam");
-
-  num=_hashstr(a, strs[0]);
-  strcpy((char*)a -> keyptr, strs[0]);
-  strcpy(list[num], strs[0]);
-  printf("%s\n", (char*)a->keyptr);
-  strcpy((char*)a -> dataptr, list[num]);
-
-  for(i=0; i<a->capacity; i++){
-    printf("%s\n", (char*)(a->dataptr+MAXSTR));
-  }
-  num=_hashstr(a, strs[1]);
-  strcpy((char*)a -> keyptr, strs[1]);
-  printf("%s\n", (char*)a->keyptr);
-  num=_hashstr(a, strs[2]);
-  num=_hashstr(a, strs[3]);
-
-  /*_hashprint(a);*/
-
-
-  assoc_free(a);
-   /*static char strs[WORDS][50]={{0}};
+   static char strs[WORDS][50]={{0}};
    FILE *fp;
    char* tstr;
    void *p;
-   unsigned int lngst;
+   /*unsigned int lngst;*/
    unsigned int j;
    assoc* a;
    static int i[WORDS];
 
+   _test();
    a = assoc_init(0);
-   fp = nfopen("../../Data/Words/eng_370k_shuffle.txt", "rt");
+   fp = nfopen("words.txt", "rt");
    for(j=0; j<WORDS; j++){
       assert(assoc_count(a)==j);
       i[j] = j;
@@ -66,7 +31,7 @@ int main(void)
       assoc_insert(&a, strs[j], &i[j]);
    }
    fclose(fp);
-
+   _hashprint(a, true);
    /*
       What's the longest word that is still spelled
       correctly when reversed, but is not a palindrome ?
@@ -87,7 +52,7 @@ int main(void)
          }
          free(tstr);
       }
-   }
+   }*/
    assoc_free(a);
 
    /*

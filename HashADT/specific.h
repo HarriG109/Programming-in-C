@@ -7,17 +7,17 @@
 
 typedef enum bool {false, true} bool;
 
-/*Create structure containing a pointer to the data, a pointer to the key,
-a number of elements stored, a maximum capacity*/
-
-typedef struct assoc{
+/*Create structure containing a pointer to the data and a pointer to the key*/
+typedef struct store{
   void* dataptr;
   void* keyptr;
+}store;
+
+/*Create structure containing a array of structs of the above, the keysize,
+number of elements in the array of structs and max capacity*/
+typedef struct assoc{
+  store* lookup;
   int keysize;
   int nfilled;
   int capacity;
 }assoc;
-
-/*typedef struct data{
-  void* data;
-}data;*/
