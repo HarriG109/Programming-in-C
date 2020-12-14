@@ -93,8 +93,9 @@ void _resize(assoc** a){
   new -> keysize = b -> keysize;
   /*Reset 'nfilled' because nothing has been hashed yet*/
   new -> nfilled = 0;
-  new -> capacity = INITSIZE*SCALEFACTOR;
-  new -> lookup = ncalloc(b -> capacity*SCALEFACTOR, sizeof(store));
+  /* Make sure new capacity is prime */
+  new -> capacity = _nrstlowprime(b -> capacity*SCALEFACTOR);
+  new -> lookup = ncalloc(new -> capacity, sizeof(store));
 
   for(i=0; i< b-> capacity; i++){
     _hashstr(new, b -> lookup[i].keyptr, b -> lookup[i].dataptr);
