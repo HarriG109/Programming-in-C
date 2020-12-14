@@ -36,9 +36,10 @@ assoc* assoc_init(int keysize){
 
 void assoc_insert(assoc** a, void* key, void* data){
 
+  /*Create percentage that hash table is filled*/
   double pctfld;
   pctfld=(double)(*a) -> nfilled/ (*a) -> capacity*100;
-  printf("%f\n", pctfld);
+  /*printf("%f\n", pctfld);*/
 
   if(pctfld > 70){
     _resize(a);
@@ -90,7 +91,8 @@ void _resize(assoc** a){
 
   new = ncalloc(1, sizeof(assoc));
   new -> keysize = b -> keysize;
-  new -> nfilled = b -> nfilled;
+  /*Reset 'nfilled' because nothing has been hashed yet*/
+  new -> nfilled = 0;
   new -> capacity = INITSIZE*SCALEFACTOR;
   new -> lookup = ncalloc(b -> capacity*SCALEFACTOR, sizeof(store));
 
@@ -111,7 +113,7 @@ void _hashstr(assoc* a, void* key, void* data){
     if(key != NULL){
       /* Get hashed key integer */
       n=_hashnumstr(a, key);
-      printf("hash: %d ", n);
+      /*printf("hash: %d ", n);*/
 
       /*Store key pointer and index pointer in structure if empty*/
       if(a -> lookup[n].keyptr == NULL){
@@ -122,12 +124,12 @@ void _hashstr(assoc* a, void* key, void* data){
       else{
         /* Create probe */
         p=_probenumstr(a, key);
-        printf("probe: %d ", p);
+        /*printf("probe: %d ", p);*/
 
         /*Add probe to hash number and get remainder*/
         while(filled == a -> nfilled){
           n=(n+p)%a -> capacity;
-          printf("nexthash: %d ", n);
+          /*printf("nexthash: %d ", n);*/
           if(a -> lookup[n].keyptr == NULL){
             a -> lookup[n].keyptr = key;
             a -> lookup[n].dataptr = data;
