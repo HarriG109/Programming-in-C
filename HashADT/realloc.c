@@ -4,8 +4,9 @@
 
 int _hashnumstr(assoc* a,  void* key);
 int _probenumstr(assoc* a, void* key);
-int _hashstr(assoc* a, void* key, void* data);
+void _hashstr(assoc* a, void* key, void* data);
 void _hashprint(assoc* a, bool string);
+void _resize(assoc** a);
 bool _isprime(unsigned int n);
 unsigned int _nrstlowprime(unsigned int n);
 void _test();
@@ -34,11 +35,17 @@ assoc* assoc_init(int keysize){
    be changed due to a realloc() etc.*/
 
 void assoc_insert(assoc** a, void* key, void* data){
-  /*Struct De-reference variable*/
-  assoc* b = (*a);
 
-  if(b -> keysize == 0){
-    _hashstr(b, key, data);
+  /*Create percentage that hash table is filled*/
+  double pctfld;
+  pctfld=(double)(*a) -> nfilled/ (*a) -> capacity*100;
+  /*printf("%f\n", pctfld);*/
+
+  if(pctfld > 70){
+    _resize(a);
+  }
+  if((*a) -> keysize == 0){
+    _hashstr((*a), key, data);
   }
 }
 
@@ -72,6 +79,70 @@ void assoc_free(assoc* a){
 /******************************************************************/
 /******************** Unofficial Functions ************************/
 /******************************************************************/
+
+/* Resize hash table and rehash old data*/
+void _resize(assoc** a){
+  int i;
+
+  /*Temporary pointer to free*/
+  assoc* new;
+  /*Struct De-reference variable*/
+  assoc* b = (*a);
+
+  new = ncalloc(1, sizeof(assoc));
+  new -> keysize = b -> keysize;
+  /*Reset 'nfilled' because nothing has been hashed yet*/
+  new -> nfilled = 0;
+  new -> capacity = INITSIZE*SCALEFACTOR;
+  new -> lookup = ncalloc(b -> capacity*SCALEFACTOR, sizeof(store));
+
+  for(i=0; i< b-> capacity; i++){
+    _hashstr(new, b -> lookup[i].keyptr, b -> lookup[i].dataptr);
+  }
+  *a = new;
+
+  assoc_free(b);
+}
+
+/*Function to perform hashing on string*/
+void _hashstr(assoc* a, void* key, void* data){
+  if(a != NULL){
+    int n, p, filled;
+    filled=a->nfilled;
+
+    if(key != NULL){
+      /* Get hashed key integer */
+      n=_hashnumstr(a, key);
+      /*printf("hash: %d ", n);*/
+
+      /*Store key pointer and index pointer in structure if empty*/
+      if(a -> lookup[n].keyptr == NULL){
+        a -> lookup[n].keyptr = key;
+        a -> lookup[n].dataptr = data;
+        a -> nfilled++;
+      }
+      else{
+        /* Create probe */
+        p=_probenumstr(a, key);
+        /*printf("probe: %d ", p);*/
+
+        /*Add probe to hash number and get remainder*/
+        while(filled == a -> nfilled){
+          n=(n+p)%a -> capacity;
+          /*printf("nexthash: %d ", n);*/
+          if(a -> lookup[n].keyptr == NULL){
+            a -> lookup[n].keyptr = key;
+            a -> lookup[n].dataptr = data;
+            a -> nfilled++;
+          }
+        }
+      }
+    }
+  }
+  else{
+    printf("Structure is NULL, please check and try again!");
+  }
+}
 
 /*Function to return numeric hash value*/
 int _hashnumstr(assoc* a, void* key){
@@ -109,38 +180,6 @@ int _probenumstr(assoc* a, void* key){
     hash++;
   }
   return (int)(hash);
-}
-
-/*Function perform hashing*/
-int _hashstr(assoc* a, void* key, void* data){
-  int n, p, filled;
-  filled=a->nfilled;
-  /* Get hashed key integer */
-  n=_hashnumstr(a, key);
-  printf("hash: %d ", n);
-
-  /*Store key pointer and index pointer in structure if empty*/
-  if(a -> lookup[n].keyptr == NULL){
-    a -> lookup[n].keyptr = key;
-    a -> lookup[n].dataptr = data;
-    a -> nfilled++;
-  }
-  else{
-    /* Create probe */
-    p=_probenumstr(a, key);
-    printf("probe: %d ", p);
-
-    /*Add probe to hash number and get remainder*/
-    while(filled == a -> nfilled){
-      n=(n+p)%a -> capacity;
-      printf("nexthash: %d ", n);
-      if(a -> lookup[n].keyptr == NULL){
-        a -> lookup[n].keyptr = key;
-        a -> lookup[n].dataptr = data;
-        a -> nfilled++;
-      }
-    }
-  }
 }
 
 /*void _hashint(void* key){
