@@ -20,32 +20,44 @@ void _test();
 assoc* assoc_init(int keysize){
   assoc* a;
 
-  a = ncalloc(1, sizeof(assoc));
-  a -> keysize = keysize;
-  a -> nfilled = 0;
-  a -> capacity = INITSIZE;
-  a -> lookup = ncalloc(a -> capacity, sizeof(store));
+  if(keysize >= 0){
+    a = ncalloc(1, sizeof(assoc));
+    a -> keysize = keysize;
+    a -> nfilled = 0;
+    a -> capacity = INITSIZE;
+    a -> lookup = ncalloc(a -> capacity, sizeof(store));
 
-  return a;
+    return a;
+  }
+  else{
+    printf("Keysize is negative, please try again.");
+    return NULL;
+  }
 }
 
 /*
    Insert key/data pair
    - may cause resize, therefore 'a' might
-   be changed due to a realloc() etc.*/
-
+   be changed due to a realloc() etc.
+*/
 void assoc_insert(assoc** a, void* key, void* data){
 
-  /*Create percentage that hash table is filled*/
-  double pctfld;
-  pctfld=(double)(*a) -> nfilled/ (*a) -> capacity*100;
-  /*printf("%f\n", pctfld);*/
+  if(a != NULL && *a != NULL){
+    /*Create percentage that hash table is filled*/
+    double pctfld;
+    pctfld=(double)(*a) -> nfilled/ (*a) -> capacity*100;
+    /*printf("%f\n", pctfld);*/
 
-  if(pctfld > 70){
-    _resize(a);
+    if(pctfld > 70){
+      _resize(a);
+    }
+    /*if((*a) -> keysize == 0){*/
+      _hashstr((*a), key, data);
+    /*}*/
   }
-  if((*a) -> keysize == 0){
-    _hashstr((*a), key, data);
+  else{
+    printf("Pointer to structure is null, try again");
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -60,9 +72,39 @@ unsigned int assoc_count(assoc* a){
 /*
    Returns a pointer to the data, given a key
    NULL => not found
-
+*/
 void* assoc_lookup(assoc* a, void* key){
+  int n, p, i;
 
+  if(key != NULL){
+    /* Get hashed key integer */
+    n=_hashnumstr(a, key);
+
+    if(a -> lookup[n].keyptr != NULL &&
+        strcmp((char*)(a -> lookup[n].keyptr), (char*)(key)) == 0){
+      return a -> lookup[n].dataptr;
+    }
+    else{
+      /* Create probe */
+      p=_probenumstr(a, key);
+
+      /* Lookup x times before we assume word is not found*/
+      while(a -> lookup[n].keyptr != NULL || i == a -> capacity){
+        /*Add probe to hash number and get remainder*/
+        n=(n+p)%a -> capacity;
+        if(a -> lookup[n].keyptr != NULL &&
+           strcmp((char*)(a -> lookup[n].keyptr), (char*)(key)) == 0){
+          return a -> lookup[n].dataptr;
+        }
+        i++;
+      }
+      return NULL;
+    }
+  }
+  else{
+    printf("Trying to lookup a NULL pointer will result in NULL.");
+    return NULL;
+  }
 }
 
 
@@ -109,6 +151,7 @@ void _resize(assoc** a){
 void _hashstr(assoc* a, void* key, void* data){
   if(a != NULL){
     int n, p, filled;
+    /* Create copy of currently filled elements in structure*/
     filled=a->nfilled;
 
     if(key != NULL){
@@ -127,8 +170,11 @@ void _hashstr(assoc* a, void* key, void* data){
         p=_probenumstr(a, key);
         /*printf("probe: %d ", p);*/
 
-        /*Add probe to hash number and get remainder*/
-        while(filled == a -> nfilled){
+        /* If an element is added or the same element as one already stored
+        then stop*/
+        while(filled == a -> nfilled &&
+              strcmp((char*)(a -> lookup[n].keyptr), (char*)(key)) != 0){
+          /*Add probe to hash number and get remainder*/
           n=(n+p)%a -> capacity;
           /*printf("nexthash: %d ", n);*/
           if(a -> lookup[n].keyptr == NULL){
@@ -232,6 +278,54 @@ void _hashprint(assoc* a, bool string){
 }
 
 void _test(){
+  static char str1[2][10]={{"Cat"},
+                           {"Cat"}};
+
+  static char str2[13][10]={{"Lets"},
+                           {"test"},
+                           {"all"},
+                           {"my"},
+                           {"functions"},
+                           {"so"},
+                           {"Neill"},
+                           {"can"},
+                           {"give"},
+                           {"me"},
+                           {"a"},
+                           {"good"},
+                           {"grade"}};
+
+  static int nwords1[2]={1, 2};
+  static int nwords2[10]={1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+  assoc* test1;
+  assoc* test2;
+  assoc* test3;
+
+  assert((test1=assoc_init(-1)) == NULL);
+  assert((test2=assoc_init(0)) != NULL);
+  assert((test3=assoc_init(8)) != NULL);
+  assert(test2 -> capacity == 17);
+  assert(test2 -> nfilled == 0);
+  assert(test2 -> keysize == 0);
+
+  assert(_hashnumstr(test2, str1[0]) >= 0);
+  assert(_hashnumstr(test2, str1[0]) <= 17);
+
+  _hashstr(test2, str1[0], &nwords1[0]);
+  assert(test2 -> nfilled == 1);
+  _hashstr(test2, str1[1], &nwords1[1]);
+  assert(test2 -> nfilled == 1);
+  _hashstr(test3, str2[0], &nwords2[0]);
+  assert(test3 -> nfilled == 1);
+  _hashstr(test3, str2[1], &nwords2[1]);
+  assert(test3 -> nfilled == 2);
+  /*_hashprint(test2, true);*/
+
+  /* Don't need to free a it should return NULL*/
+  assoc_free(test2);
+  assoc_free(test3);
+
   assert(_isprime(2));
   assert(!_isprime(1));
   assert(!_isprime(4));
