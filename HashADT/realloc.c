@@ -2,11 +2,13 @@
 #include "specific.h"
 #include "../assoc.h"
 
-int _hashnumstr(assoc* a,  void* key);
-int _probenumstr(assoc* a, void* key);
-void _hashstr(assoc* a, void* key, void* data);
+void* _lookupstr(assoc* a, void* key);
+int _hashval(assoc* a,  void* key);
+int _probeval(assoc* a, void* key);
+void _hash(assoc* a, void* key, void* data);
 void _hashprint(assoc* a, bool string);
 void _resize(assoc** a);
+int _comp(void* a, void* key, int bytesize);
 bool _isprime(unsigned int n);
 unsigned int _nrstlowprime(unsigned int n);
 void _test();
@@ -46,14 +48,11 @@ void assoc_insert(assoc** a, void* key, void* data){
     /*Create percentage that hash table is filled*/
     double pctfld;
     pctfld=(double)(*a) -> nfilled/ (*a) -> capacity*100;
-    /*printf("%f\n", pctfld);*/
 
     if(pctfld > 70){
       _resize(a);
     }
-    /*if((*a) -> keysize == 0){*/
-      _hashstr((*a), key, data);
-    /*}*/
+    _hash((*a), key, data);
   }
   else{
     printf("Pointer to structure is null, try again");
@@ -74,32 +73,9 @@ unsigned int assoc_count(assoc* a){
    NULL => not found
 */
 void* assoc_lookup(assoc* a, void* key){
-  int n, p, i;
 
   if(key != NULL){
-    /* Get hashed key integer */
-    n=_hashnumstr(a, key);
-
-    if(a -> lookup[n].keyptr != NULL &&
-        strcmp((char*)(a -> lookup[n].keyptr), (char*)(key)) == 0){
-      return a -> lookup[n].dataptr;
-    }
-    else{
-      /* Create probe */
-      p=_probenumstr(a, key);
-
-      /* Lookup x times before we assume word is not found*/
-      while(a -> lookup[n].keyptr != NULL || i == a -> capacity){
-        /*Add probe to hash number and get remainder*/
-        n=(n+p)%a -> capacity;
-        if(a -> lookup[n].keyptr != NULL &&
-           strcmp((char*)(a -> lookup[n].keyptr), (char*)(key)) == 0){
-          return a -> lookup[n].dataptr;
-        }
-        i++;
-      }
-      return NULL;
-    }
+    return _lookupstr(a, key);
   }
   else{
     printf("Trying to lookup a NULL pointer will result in NULL.");
@@ -140,23 +116,50 @@ void _resize(assoc** a){
   new -> lookup = ncalloc(new -> capacity, sizeof(store));
 
   for(i=0; i< b-> capacity; i++){
-    _hashstr(new, b -> lookup[i].keyptr, b -> lookup[i].dataptr);
+    _hash(new, b -> lookup[i].keyptr, b -> lookup[i].dataptr);
   }
   *a = new;
 
   assoc_free(b);
 }
 
-/*Function to perform hashing on string*/
-void _hashstr(assoc* a, void* key, void* data){
+/*Function to lookup*/
+void* _lookupstr(assoc* a, void* key){
+  int n, p;
+
+  /* Get hashed key integer */
+  n=_hashval(a, key);
+
+  if(a -> lookup[n].keyptr != NULL &&
+     _comp(a -> lookup[n].keyptr, key, a -> keysize) == 0){
+    return a -> lookup[n].dataptr;
+  }
+  else{
+    /* Create probe */
+    p=_probeval(a, key);
+
+    /* Lookup x times before we assume word is not found*/
+    while(a -> lookup[n].keyptr != NULL){
+      /*Add probe to hash number and get remainder*/
+      n=(n+p)%a -> capacity;
+      if(a -> lookup[n].keyptr != NULL &&
+         _comp(a -> lookup[n].keyptr, key, a -> keysize) == 0){
+        return a -> lookup[n].dataptr;
+      }
+    }
+    return NULL;
+  }
+}
+
+/*Function to perform hashing*/
+void _hash(assoc* a, void* key, void* data){
   if(a != NULL){
-    int n, p, filled;
-    /* Create copy of currently filled elements in structure*/
-    filled=a->nfilled;
+    int n, p;
+    bool stored = false;
 
     if(key != NULL){
       /* Get hashed key integer */
-      n=_hashnumstr(a, key);
+      n=_hashval(a, key);
       /*printf("hash: %d ", n);*/
 
       /*Store key pointer and index pointer in structure if empty*/
@@ -166,21 +169,32 @@ void _hashstr(assoc* a, void* key, void* data){
         a -> nfilled++;
       }
       else{
+        /* If same number or string then overwrite datapointer */
+        if(a -> lookup[n].keyptr != NULL &&
+           _comp(a -> lookup[n].keyptr, key, a -> keysize) == 0){
+          a -> lookup[n].dataptr = data;
+          stored = true;
+        }
         /* Create probe */
-        p=_probenumstr(a, key);
+        p=_probeval(a, key);
         /*printf("probe: %d ", p);*/
 
-        /* If an element is added or the same element as one already stored
-        then stop*/
-        while(filled == a -> nfilled &&
-              strcmp((char*)(a -> lookup[n].keyptr), (char*)(key)) != 0){
+        /* If an element has been stored in table then stop*/
+        while(stored == false){
           /*Add probe to hash number and get remainder*/
           n=(n+p)%a -> capacity;
           /*printf("nexthash: %d ", n);*/
-          if(a -> lookup[n].keyptr == NULL){
+          /* If same number or string then overwrite datapointer only */
+          if(a -> lookup[n].keyptr != NULL &&
+             _comp(a -> lookup[n].keyptr, key, a -> keysize) == 0){
+            a -> lookup[n].dataptr = data;
+            stored = true;
+          }
+          else if(a -> lookup[n].keyptr == NULL){
             a -> lookup[n].keyptr = key;
             a -> lookup[n].dataptr = data;
             a -> nfilled++;
+            stored = true;
           }
         }
       }
@@ -192,36 +206,63 @@ void _hashstr(assoc* a, void* key, void* data){
 }
 
 /*Function to return numeric hash value*/
-int _hashnumstr(assoc* a, void* key){
+int _hashval(assoc* a, void* key){
   char str[MAXSTR];
   int c, i=0;
   unsigned long hash=5381;
 
-  /* Create copy of void pointer into a char pointer*/
-  strcpy(str, (char*)key);
+  if(a -> keysize == 0){
+    /* Create copy of void pointer into a char pointer*/
+    strcpy(str, (char*)key);
 
-  /*Hash function used from lecture notes */
-  while((c = (str[i++]))){
-    hash= 33 * hash ^ c;
+    /*Hash function used from lecture notes */
+    while((c = (str[i++]))){
+      hash= 33 * hash ^ c;
+    }
   }
+  else{
+    /* Create copy of void pointer into a char pointer*/
+    memcpy(str, key, a -> keysize);
+
+    /*HASH FUNCTION USED FROM LECTURE NOTES */
+    while(i < a -> keysize){
+      c = (str[i++]);
+      hash= 33 * hash ^ c;
+    }
+  }
+
   hash=hash%a->capacity;
   return (int)(hash);
 }
 
-/*Function to create the probe hash number*/
-int _probenumstr(assoc* a, void* key){
+/*Function to create the probe number*/
+int _probeval(assoc* a, void* key){
   char str[MAXSTR];
   int c, i=0;
   unsigned long hash=5381;
 
-  /* Create copy of void pointer into a char pointer*/
-  strcpy(str, (char*)key);
+  if(a -> keysize == 0){
+    /* Create copy of void pointer into a char pointer*/
+    strcpy(str, (char*)key);
 
-  /*Hash function used from lecture notes */
-  while((c = (str[i++]))){
-    hash= 33 * hash ^ c;
+    /*PROBE FUNCTION USED FROM LECTURE NOTES */
+    while((c = (str[i++]))){
+      hash= 33 * hash ^ c;
+    }
   }
+  else{
+    /* Create copy of void pointer into a char pointer*/
+    memcpy(str, key, a -> keysize);
+
+    /*PROBE FUNCTION USED FROM LECTURE NOTES */
+    while(i < a -> keysize){
+      c = (str[i++]);
+      hash= 33 * hash ^ c;
+    }
+  }
+
   hash=(hash/ a-> capacity)%a->capacity;
+
   /*Precaution if probe is ever 0*/
   if(hash==0){
     hash++;
@@ -229,9 +270,19 @@ int _probenumstr(assoc* a, void* key){
   return (int)(hash);
 }
 
-/*void _hashint(void* key){
-
-}*/
+/* Compare int or string function within assoc against key, returns 0 if true */
+int _comp(void* cmp, void* key, int bytesize){
+  if(bytesize == 0){
+    return strcmp((char*)(cmp), (char*)(key));
+  }
+  else if(bytesize > 0){
+    return memcmp(cmp, key, bytesize);
+  }
+  else{
+    printf("Keysize is negative, please check");
+    return -1;
+  }
+}
 
 /* Function to find the nearest prime lower than the number you send
  to the function*/
@@ -296,7 +347,7 @@ void _test(){
                            {"grade"}};
 
   static int nwords1[2]={1, 2};
-  static int nwords2[10]={1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  static int nwords2[13]={1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 
   assoc* test1;
   assoc* test2;
@@ -309,17 +360,19 @@ void _test(){
   assert(test2 -> nfilled == 0);
   assert(test2 -> keysize == 0);
 
-  assert(_hashnumstr(test2, str1[0]) >= 0);
-  assert(_hashnumstr(test2, str1[0]) <= 17);
+  assert(_hashval(test2, str1[0]) >= 0);
+  assert(_hashval(test2, str1[0]) <= 17);
 
-  _hashstr(test2, str1[0], &nwords1[0]);
+  _hash(test2, str1[0], &nwords1[0]);
   assert(test2 -> nfilled == 1);
-  _hashstr(test2, str1[1], &nwords1[1]);
+  _hash(test2, str1[1], &nwords1[1]);
   assert(test2 -> nfilled == 1);
-  _hashstr(test3, str2[0], &nwords2[0]);
+  _hash(test3, str2[0], &nwords2[0]);
   assert(test3 -> nfilled == 1);
-  _hashstr(test3, str2[1], &nwords2[1]);
+  _hash(test3, str2[1], &nwords2[1]);
   assert(test3 -> nfilled == 2);
+  _hash(test3, str2[10], &nwords2[10]);
+  assert(test3 -> nfilled == 3);
   /*_hashprint(test2, true);*/
 
   /* Don't need to free a it should return NULL*/
