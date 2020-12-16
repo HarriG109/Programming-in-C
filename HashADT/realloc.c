@@ -6,7 +6,7 @@ void* _lookup(assoc* a, void* key);
 int _hashval(assoc* a,  void* key);
 int _probeval(assoc* a, void* key);
 void _hash(assoc* a, void* key, void* data);
-void _hashprntkey(assoc* a, bool string);
+void _hashprntkey(assoc* a, char b);
 void _hashprntdptr(assoc* a, bool string);
 void _resize(assoc** a);
 int _comp(void* a, void* key, int bytesize);
@@ -326,19 +326,35 @@ bool _isprime(unsigned int n){
 }
 
 /*Function to print key*/
-void _hashprntkey(assoc* a, bool string){
+void _hashprntkey(assoc* a, char b){
   int i;
 
-  if(string==true){
+  if(b == 'S'){
     for(i=0; i< a->capacity; i++){
       printf("%s ", (char*)a -> lookup[i].keyptr);
     }
   }
-  else{
+  else if(b == 'I'){
     for(i=0; i< a->capacity; i++){
       /* Cannot print nulls for numerics */
       if(a -> lookup[i].keyptr != NULL){
         printf("%d ", *(int*)a -> lookup[i].keyptr);
+      }
+    }
+  }
+  else if(b == 'F'){
+    for(i=0; i< a->capacity; i++){
+      /* Cannot print nulls for numerics */
+      if(a -> lookup[i].keyptr != NULL){
+        printf("%f ", *(float*)a -> lookup[i].keyptr);
+      }
+    }
+  }
+  else if(b == 'D'){
+    for(i=0; i< a->capacity; i++){
+      /* Cannot print nulls for numerics */
+      if(a -> lookup[i].keyptr != NULL){
+        printf("%f ", *(double*)a -> lookup[i].keyptr);
       }
     }
   }
@@ -383,11 +399,15 @@ void _test(){
                            {"good"},
                            {"grade"}};
 
+  /* Put repeat word/number last so assert of nfilled doesn't fail*/
   static int num1[13] = {26574, 3, -1, -4321, 18, 345, 1765, 0, 87, 33333333
                          , -13243, 24, -1};
-                         
-  static float float1[13] = {26574, 3, -1, -4321, 18, 345, 1765, 0, 87, 33333333
-                                                , -13243, 24, -1};
+
+  static float float1[13] = {0.123, -0.003, -6.72, 1800.01, 22.22, 0.92923, 5.0,
+                             4.59, 77777.0, 234.56, -13243.098, 0.0000003,  -6.72};
+
+  static double double1[13] = {0.123, -0.003, -6.72, 1800.01, 22.22, 0.92923, 5.0,
+                             4.59, 77777.0, 234.56, -13243.098, 0.0000003,  -6.72};
 
   static int nwords1[2]={1, 2};
   static int nwords2[13]={1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
@@ -403,6 +423,8 @@ void _test(){
   assert((test1=assoc_init(0)) != NULL);
   assert((test2=assoc_init(0)) != NULL);
   assert((test3=assoc_init(sizeof(int))) != NULL);
+  assert((test4=assoc_init(sizeof(float))) != NULL);
+  assert((test5=assoc_init(sizeof(double))) != NULL);
   assert(test2 -> capacity == 17);
   assert(test2 -> nfilled == 0);
   assert(test2 -> keysize == 0);
@@ -417,6 +439,14 @@ void _test(){
     assert(_hashval(test3, &num1[i]) <= 17);
     assert(_probeval(test3, &num1[i]) > 0);
     assert(_probeval(test3, &num1[i]) <= 17);
+    assert(_hashval(test4, &float1[i]) >= 0);
+    assert(_hashval(test4, &float1[i]) <= 17);
+    assert(_probeval(test4, &float1[i]) > 0);
+    assert(_probeval(test4, &float1[i]) <= 17);
+    assert(_hashval(test5, &double1[i]) >= 0);
+    assert(_hashval(test5, &double1[i]) <= 17);
+    assert(_probeval(test5, &double1[i]) > 0);
+    assert(_probeval(test5, &double1[i]) <= 17);
   }
 
   _hash(test2, str1[0], &nwords1[0]);
@@ -428,14 +458,27 @@ void _test(){
     _hash(test1, str2[j], &nwords2[j]);
     assert(test3 -> nfilled == j);
     _hash(test3, &num1[j], &nwords2[j]);
+    assert(test4 -> nfilled == j);
+    _hash(test4, &float1[j], &nwords2[j]);
+    assert(test5 -> nfilled == j);
+    _hash(test5, &double1[j], &nwords2[j]);
   }
 
-  _hashprntkey(test1, true);
+  _hashprntkey(test1, 'S');
   printf("\n\n");
-  _hashprntkey(test2, true);
+  _hashprntkey(test2, 'S');
   printf("\n\n");
-  _hashprntkey(test3, false);
-  _hashprntdptr(test3, false);
+  _hashprntkey(test3, 'I');
+  printf("\n\n");
+  _hashprntdptr(test3, 'I');
+  printf("\n\n");
+  _hashprntkey(test4, 'F');
+  printf("\n\n");
+  _hashprntdptr(test4, 'F');
+  printf("\n\n");
+  _hashprntkey(test5, 'D');
+  printf("\n\n");
+  _hashprntdptr(test5, 'D');
 
   assoc_count(NULL);
 
@@ -446,10 +489,21 @@ void _test(){
   /*Testing the "Cat" datapointer overwrites*/
   assert(assoc_lookup(test2, str1[0]) != &nwords1[0]);
   assert(assoc_lookup(test2, str1[0]) == &nwords1[1]);
+
   assert(assoc_lookup(test3, &num1[0]) == &nwords2[0]);
   assert(assoc_lookup(test3, &num1[1]) == &nwords2[1]);
   /*Check -1 overwrites with the latest datapointer*/
   assert(assoc_lookup(test3, &num1[2]) == &nwords2[12]);
+
+  assert(assoc_lookup(test4, &float1[0]) == &nwords2[0]);
+  assert(assoc_lookup(test4, &float1[1]) == &nwords2[1]);
+  /*Check 0.123 overwrites with the latest datapointer*/
+  assert(assoc_lookup(test4, &float1[2]) == &nwords2[12]);
+
+  assert(assoc_lookup(test5, &double1[0]) == &nwords2[0]);
+  assert(assoc_lookup(test5, &double1[1]) == &nwords2[1]);
+  /*Check 0.123 overwrites with the latest datapointer*/
+  assert(assoc_lookup(test5, &double1[2]) == &nwords2[12]);
 
   assert(_isprime(2));
   assert(!_isprime(1));
@@ -467,7 +521,7 @@ void _test(){
   assert(test1 -> keysize == 0);
   assert(test1 -> lookup != NULL);
   printf("\n");
-  _hashprntkey(test1, true);
+  _hashprntkey(test1, 'S');
 
   /* Comment out top two as they cause EXIT_FAILURE*/
   /*assoc_insert(NULL, str2[0], &nwords1[0]);*/
@@ -482,6 +536,8 @@ void _test(){
   assoc_free(test1);
   assoc_free(test2);
   assoc_free(test3);
+  assoc_free(test4);
+  assoc_free(test5);
 
   assert(_comp(&str1[0], &str1[1], 0) == 0);
   assert(_comp(&str1[0], &str2[0], 0) != 0);
