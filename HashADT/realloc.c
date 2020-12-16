@@ -2,11 +2,12 @@
 #include "specific.h"
 #include "../assoc.h"
 
-void* _lookupstr(assoc* a, void* key);
+void* _lookup(assoc* a, void* key);
 int _hashval(assoc* a,  void* key);
 int _probeval(assoc* a, void* key);
 void _hash(assoc* a, void* key, void* data);
-void _hashprint(assoc* a, bool string);
+void _hashprntkey(assoc* a, bool string);
+void _hashprntdptr(assoc* a, bool string);
 void _resize(assoc** a);
 int _comp(void* a, void* key, int bytesize);
 bool _isprime(unsigned int n);
@@ -32,7 +33,7 @@ assoc* assoc_init(int keysize){
     return a;
   }
   else{
-    printf("Keysize is negative, please try again.");
+    printf("Keysize is negative, please try again.\n");
     return NULL;
   }
 }
@@ -55,7 +56,7 @@ void assoc_insert(assoc** a, void* key, void* data){
     _hash((*a), key, data);
   }
   else{
-    printf("Pointer to structure is null, try again");
+    printf("Pointer to structure is null, try again\n");
     exit(EXIT_FAILURE);
   }
 }
@@ -65,7 +66,10 @@ void assoc_insert(assoc** a, void* key, void* data){
    currently stored in the table
 */
 unsigned int assoc_count(assoc* a){
-  return a -> nfilled;
+  if(a != NULL){
+    return a -> nfilled;
+  }
+  return 0;
 }
 
 /*
@@ -74,22 +78,27 @@ unsigned int assoc_count(assoc* a){
 */
 void* assoc_lookup(assoc* a, void* key){
 
-  if(key != NULL){
-    return _lookupstr(a, key);
+  if(key == NULL){
+    printf("Trying to lookup a NULL pointer will result in NULL.\n");
+    return NULL;
+  }
+  else if(a == NULL){
+    printf("Trying to lookup a pointer in NULL structure will result in NULL.\n");
+    return NULL;
   }
   else{
-    printf("Trying to lookup a NULL pointer will result in NULL.");
-    return NULL;
+    return _lookup(a, key);
   }
 }
 
 
 /* Free up all allocated space from 'a' */
 void assoc_free(assoc* a){
-  if(a -> lookup != NULL){
-    free(a-> lookup);
-  }
+
   if(a != NULL){
+    if(a -> lookup != NULL){
+      free(a-> lookup);
+    }
     free(a);
   }
 }
@@ -124,7 +133,7 @@ void _resize(assoc** a){
 }
 
 /*Function to lookup*/
-void* _lookupstr(assoc* a, void* key){
+void* _lookup(assoc* a, void* key){
   int n, p;
 
   /* Get hashed key integer */
@@ -199,9 +208,12 @@ void _hash(assoc* a, void* key, void* data){
         }
       }
     }
+    else{
+      printf("Key is NULL, nothing will be inserted\n");
+    }
   }
   else{
-    printf("Structure is NULL, please check and try again!");
+    printf("Structure is NULL, please check and try again!\n");
   }
 }
 
@@ -251,7 +263,7 @@ int _probeval(assoc* a, void* key){
     }
   }
   else{
-    /* Create copy of void pointer into a char pointer*/
+    /* Create copy of void pointer into a pointer*/
     memcpy(str, key, a -> keysize);
 
     /*PROBE FUNCTION USED FROM LECTURE NOTES */
@@ -270,7 +282,7 @@ int _probeval(assoc* a, void* key){
   return (int)(hash);
 }
 
-/* Compare int or string function within assoc against key, returns 0 if true */
+/* Compare int or string casted from void pointers against key, returns 0 if true */
 int _comp(void* cmp, void* key, int bytesize){
   if(bytesize == 0){
     return strcmp((char*)(cmp), (char*)(key));
@@ -279,7 +291,7 @@ int _comp(void* cmp, void* key, int bytesize){
     return memcmp(cmp, key, bytesize);
   }
   else{
-    printf("Keysize is negative, please check");
+    printf("Keysize is negative, please check\n");
     return -1;
   }
 }
@@ -313,7 +325,8 @@ bool _isprime(unsigned int n){
   return true;
 }
 
-void _hashprint(assoc* a, bool string){
+/*Function to print key*/
+void _hashprntkey(assoc* a, bool string){
   int i;
 
   if(string==true){
@@ -323,12 +336,36 @@ void _hashprint(assoc* a, bool string){
   }
   else{
     for(i=0; i< a->capacity; i++){
-      printf("%d ", *((int*)a -> lookup[i].keyptr));
+      /* Cannot print nulls for numerics */
+      if(a -> lookup[i].keyptr != NULL){
+        printf("%d ", *(int*)a -> lookup[i].keyptr);
+      }
+    }
+  }
+}
+
+/*Function to print data pointer*/
+void _hashprntdptr(assoc* a, bool string){
+  int i;
+
+  if(string==true){
+    for(i=0; i< a->capacity; i++){
+      printf("%s ", (char*)a -> lookup[i].dataptr);
+    }
+  }
+  else{
+    for(i=0; i< a->capacity; i++){
+      /* Cannot print nulls for numerics */
+      if(a -> lookup[i].keyptr != NULL){
+        printf("%d ", *(int*)a -> lookup[i].dataptr);
+      }
     }
   }
 }
 
 void _test(){
+  int i, j, filled;
+
   static char str1[2][10]={{"Cat"},
                            {"Cat"}};
 
@@ -346,38 +383,73 @@ void _test(){
                            {"good"},
                            {"grade"}};
 
+  static int num1[13] = {26574, 3, -1, -4321, 18, 345, 1765, 0, 87, 33333333
+                         , -13243, 24, -1};
+                         
+  static float float1[13] = {26574, 3, -1, -4321, 18, 345, 1765, 0, 87, 33333333
+                                                , -13243, 24, -1};
+
   static int nwords1[2]={1, 2};
   static int nwords2[13]={1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
 
+  assoc* test0;
   assoc* test1;
   assoc* test2;
   assoc* test3;
+  assoc* test4;
+  assoc* test5;
 
-  assert((test1=assoc_init(-1)) == NULL);
+  assert((test0=assoc_init(-1)) == NULL);
+  assert((test1=assoc_init(0)) != NULL);
   assert((test2=assoc_init(0)) != NULL);
-  assert((test3=assoc_init(8)) != NULL);
+  assert((test3=assoc_init(sizeof(int))) != NULL);
   assert(test2 -> capacity == 17);
   assert(test2 -> nfilled == 0);
   assert(test2 -> keysize == 0);
+  assert(test2 -> lookup != NULL);
 
-  assert(_hashval(test2, str1[0]) >= 0);
-  assert(_hashval(test2, str1[0]) <= 17);
+  for(i=0; i < 13; i++){
+    assert(_hashval(test1, str2[i]) >= 0);
+    assert(_hashval(test1, str2[i]) <= 17);
+    assert(_probeval(test1, str2[i]) > 0);
+    assert(_probeval(test1, str2[i]) <= 17);
+    assert(_hashval(test3, &num1[i]) >= 0);
+    assert(_hashval(test3, &num1[i]) <= 17);
+    assert(_probeval(test3, &num1[i]) > 0);
+    assert(_probeval(test3, &num1[i]) <= 17);
+  }
 
   _hash(test2, str1[0], &nwords1[0]);
   assert(test2 -> nfilled == 1);
   _hash(test2, str1[1], &nwords1[1]);
   assert(test2 -> nfilled == 1);
-  _hash(test3, str2[0], &nwords2[0]);
-  assert(test3 -> nfilled == 1);
-  _hash(test3, str2[1], &nwords2[1]);
-  assert(test3 -> nfilled == 2);
-  _hash(test3, str2[10], &nwords2[10]);
-  assert(test3 -> nfilled == 3);
-  /*_hashprint(test2, true);*/
+  for(j=0; j < 13; j++){
+    assert(test1 -> nfilled == j);
+    _hash(test1, str2[j], &nwords2[j]);
+    assert(test3 -> nfilled == j);
+    _hash(test3, &num1[j], &nwords2[j]);
+  }
 
-  /* Don't need to free a it should return NULL*/
-  assoc_free(test2);
-  assoc_free(test3);
+  _hashprntkey(test1, true);
+  printf("\n\n");
+  _hashprntkey(test2, true);
+  printf("\n\n");
+  _hashprntkey(test3, false);
+  _hashprntdptr(test3, false);
+
+  assoc_count(NULL);
+
+  assert(assoc_lookup(NULL, NULL) == NULL);
+  assert(assoc_lookup(test2, NULL) == NULL);
+  assert(assoc_lookup(NULL, str1[0]) == NULL);
+  assert(assoc_lookup(test2, str2[0]) == NULL);
+  /*Testing the "Cat" datapointer overwrites*/
+  assert(assoc_lookup(test2, str1[0]) != &nwords1[0]);
+  assert(assoc_lookup(test2, str1[0]) == &nwords1[1]);
+  assert(assoc_lookup(test3, &num1[0]) == &nwords2[0]);
+  assert(assoc_lookup(test3, &num1[1]) == &nwords2[1]);
+  /*Check -1 overwrites with the latest datapointer*/
+  assert(assoc_lookup(test3, &num1[2]) == &nwords2[12]);
 
   assert(_isprime(2));
   assert(!_isprime(1));
@@ -387,5 +459,31 @@ void _test(){
 
   assert(_nrstlowprime(4)==3);
   assert(_nrstlowprime(400010)==400009);
+
+  filled = test1 -> nfilled;
+  _resize(&test1);
+  assert(test1 -> capacity == (int)_nrstlowprime(17*SCALEFACTOR));
+  assert(test1 -> nfilled == filled);
+  assert(test1 -> keysize == 0);
+  assert(test1 -> lookup != NULL);
+  printf("\n");
+  _hashprntkey(test1, true);
+
+  /* Comment out top two as they cause EXIT_FAILURE*/
+  /*assoc_insert(NULL, str2[0], &nwords1[0]);*/
+  /*assoc_insert(&test0, str2[0], &nwords1[0]);*/
+  assoc_insert(&test2, NULL, &nwords1[0]);
+  /*Null datapointer shouldn't cause any issues and still be stored*/
+  assoc_insert(&test2, str2[0], NULL);
+  assoc_insert(&test2, NULL, NULL);
+
+  assoc_free(NULL);
+  assoc_free(test0);
+  assoc_free(test1);
+  assoc_free(test2);
+  assoc_free(test3);
+
+  assert(_comp(&str1[0], &str1[1], 0) == 0);
+  assert(_comp(&str1[0], &str2[0], 0) != 0);
 
 }
