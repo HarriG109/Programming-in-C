@@ -1,5 +1,5 @@
 # Programming-in-C
-Uni module based on C90 programming
+University module based on C90 programming
 
 Contents:
 1. General exercises
